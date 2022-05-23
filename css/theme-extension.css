@@ -1,0 +1,22 @@
+/* Misskey Theme Extension
+
+ * ✨ Extended parameter
+- MFM: quote, quoteBg; change quote text and background color
+
+ * 🛠️ Tweak
+- buttonBg on toggle reaction (will increase visibility)
+
+*/
+
+/** THEME EXTENSION **/
+
+/* MFM: quote */
+.quote { color: var(--quote, var(--fg)) !important; border-left-color: var(--quote, var(--fg)) !important; opacity: var(--quote, 0.8) !important; background-color: var(--quoteBg, unset);}
+
+
+
+/** TWEAK **/
+
+/* buttonBg on toggle reaction */
+button._button.canToggle:not(.reacted) { background-color: var(--buttonBg, rgba(0,0,0,.05)) !important; }
+button._button.canToggle:not(.reacted):hover { background-color: var(--buttonHoverBg, rgba(0,0,0,.1)) !important; }

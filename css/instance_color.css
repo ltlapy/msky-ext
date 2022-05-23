@@ -1,0 +1,11 @@
+/* 인스턴스별 닉네임 색상 */
+
+.main a.name[href$="@qdon.space"] { color: #ffc0fb; }
+.main a.name[href$="@beta.qdon.space"] { color: #ffc0fb; }
+.main a.name[href$="@twingyeo.kr"] { color: #f8ac59; }
+.main a.name[href$="@planet.moe"] { color: #4f71db; }
+.main a.name[href$="@madost.one"] { color: #ffdd00; }
+.main a.name[href$="@ani.work"] { color: #aaff00; }
+.main a.name[href$="@misskey.io"] { color: #9ec23f; }
+.main a.name[href$="@kokonect.link"] {color: #ffa9c3; }
+.main a.avatar:not([title*="@"]) + :is(span, div) a.name {color: #c0ffee; }

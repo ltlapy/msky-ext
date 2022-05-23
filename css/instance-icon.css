@@ -1,0 +1,38 @@
+.article a.name:is([href$="@k.lapy.link"],
+    [href$="@qdon.space"],
+    [href$="@misskey.io"],
+) span::before {
+    content: '';
+    background-size: 100% 100%;
+    display: inline-block;
+    position: sticky;
+    bottom: 100%;
+    width: 0.8em;
+    height: 0.8em;
+    opacity: 0.7;
+}
+
+a.name[href$="@qdon.space"] span::before {
+    background-image: url(https://k.lapy.link/files/56a2f7db-9ea8-40bf-bab2-d4e52708485a);
+}
+
+a.name[href$="@misskey.io"] span::before {
+    background-image: url(https://s3.arkjp.net/misskey/webpublic-0c66b1ca-b8c0-4eaa-9827-47674f4a1580.png);
+}
+
+a.name[href$="@k.lapy.link"] span::before {
+    background-image: url(https://misskeylapy.s3.amazonaws.com/null/3690b334-a335-4ec0-808b-1ea1c84f2430.png);
+}
+
+/* for local user */
+a.avatar:not([title*="@"])+ :is(span, div) a.name::before {
+    background-image: url(/favicon.ico);
+    content: '';
+    background-size: 100% 100%;
+    display: inline-block;
+    position: sticky;
+    bottom: 100%;
+    width: 0.8em;
+    height: 0.8em;
+    opacity: 0.7;
+}

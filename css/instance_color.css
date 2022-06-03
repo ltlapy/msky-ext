@@ -8,4 +8,4 @@
 .main a.name[href$="@ani.work"] { color: #aaff00; }
 .main a.name[href$="@misskey.io"] { color: #9ec23f; }
 .main a.name[href$="@kokonect.link"] {color: #ffa9c3; }
-.main a.avatar:not([title*="@"]) + :is(span, div) a.name {color: #c0ffee; }
+:is(article, .reply-to > .main) a.avatar:not([title*="@"]) + :is(span, div) a.name { color: #c0ffee; }

@@ -1,0 +1,57 @@
+/// @ 0.16.0
+### {
+	name: "removeAllFollowers"
+	version: 1
+	description: "Remove All followers"
+}
+// Make sure API call is unlimited before running this script!
+
+// Checks the value is an error or not, and if it is, prints a message to the console and returns true
+@isError(v) {
+  if (Core:type(v) == 'error') {
+    let errInfo = v.info
+    if (errInfo.Info == 'RATE_LIMIT_EXCEEDED') {
+      <: 'API rate limit exceeded. Try again later.'
+    } else {
+      <: 'Unknown error has been occured.'
+      each (let item, Obj:kvs(errInfo)) {
+        <: `{item[0]} : {item[1]}`
+      }
+    }
+    
+    return true
+  } else {
+    return false
+  }
+}
+
+var endFlag = false
+loop {
+  <: 'Gathering list of followers...'
+  let res = Mk:api('users/followers', {
+    userId: USER_ID,
+    limit: 30
+  })
+  
+  if (isError(res)) break  
+  
+  if (res.len == 0) {
+    <: 'You have no followers!'
+    break
+  }
+  
+  each(let item, res) {
+    let follower = item.follower
+    <: `{follower.id} : @{follower.username}@{follower.host}`
+    Mk:api('following/invalidate', {
+      userId: follower.id
+    })
+    
+    if (isError(res)) {
+      endFlag = true
+      break
+    }
+  }
+  
+  if (endFlag) break
+}

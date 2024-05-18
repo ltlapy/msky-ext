@@ -1,0 +1,96 @@
+var handle = ""
+var logTxt = ""
+
+let logClear = @() {
+  logTxt = ""
+  Ui:get('killUserLog').update({ text: logTxt })
+}
+let log = @(s) {
+  logTxt = `{logTxt}{Str:lf}{s}`
+  Ui:get('killUserLog').update({ text: logTxt })
+}
+
+@killUser(handle) {
+  var username = null
+  var host = null
+  var user = {}
+  var notes = []
+  var res = null
+  
+  // 계정 정보를 가져옵니다
+  logClear()
+  log(`{handle}: 계정 정보를 가져옵니다...`)
+  
+  let handleSplit = handle.split("@")
+  username = handleSplit[1]
+  if (handleSplit.len == 3) { host = handleSplit[2] }
+  
+  user = Mk:api('users/show' {
+    host: host
+    username: username
+  })
+  
+  if (Core:type(user) == "error") {
+    log(`{handle}: 유저를 찾을 수 없습니다.`)
+    log(user.info)
+    return null
+  }
+  log(`{handle}: 유저를 찾았습니다.`)
+  
+  // 정지합니다
+  log(`{handle} 을 정지합니다`)
+  res = Mk:api('admin/suspend-user' {
+    userId: user.id
+  })
+  
+  if (Core:type(res) == "error") {
+    log(`{handle} 을 정지할 수 없습니다.`)
+    log(user.info)
+  }
+  
+  
+  // 노트 수가 0이 될 때 까지 삭제합니다
+  log(`{handle} 의 노트를 삭제합니다.`)
+  loop {
+    notes = Mk:api('users/notes' { userId: user.id })
+    if (notes.len == 0) break
+    
+    each(let note, notes) {
+      Mk:api('notes/delete', { noteId: note.id })
+      log(`{note.id}`)
+    }
+  }
+  
+  log(`{handle} 을 처리했습니다.`)
+  
+}
+
+
+let userInputUI = [
+  Ui:C:mfm({text: `$[spin.y $[bg.color=f00 :blank::blank::blank::blank:]$[bg.color=00f :blank::blank::blank::blank:]]{Str:lf}`})
+  Ui:C:textInput({
+    label: 'textInput'
+    caption: '말소할 계정 핸들을 입력하십시오'
+    onInput: @(v) { handle = v }
+  })
+  Ui:C:button({
+    text: '안되겠소, 쏩시다!', primary: true, onClick: @() { killUser(handle) }
+  })
+  Ui:C:text({}, 'killUserLog')
+]
+
+let mainUI = [
+  Ui:C:switch({
+    label: '계정말소기 전원'
+    onChange: @(v) {
+      Ui:get('userInputUI').update({ hidden: !v })
+    }
+  })
+  Ui:C:container({
+    children: userInputUI
+    hidden: true
+  } 'userInputUI')
+  
+]
+
+Ui:render(mainUI)

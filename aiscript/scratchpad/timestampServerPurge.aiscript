@@ -1,0 +1,72 @@
+/// @ 0.16.0
+// Make sure API call is unlimited before running this script!
+let host = 'example.com'
+let timeBefore_timestamp = '2100-12-31T23:59:59.999Z'
+// ----
+
+var offset = 0
+var accounts = []
+let timeBefore = Date:parse(timeBefore_timestamp)
+
+<: `looking for users in {host} ...`
+loop {
+  let res = Mk:api('admin/show-users', {
+    hostname: host,
+    limit: 30,
+    offset: offset,
+    sort: '+createdAt',
+    state: 'all'
+  })
+  
+  if (res.len == 0) break
+  
+  if (accounts.len == 0) {
+    // Seek to user which created before specified time
+    each(let account, res) {
+      if (Date:parse(account.createdAt) < timeBefore) {
+        accounts.push(account)
+      }
+    }
+  } else {
+    // Assume all accounts in the response are before specified time
+    accounts = accounts.concat(res)
+    offset = offset + res.len
+  }
+  
+  
+  if ((offset % 100) == 0) {
+    <: `Fetched {offset} accounts... ({accounts.len})`
+  }
+}
+
+<: `{accounts.len} accounts were found that match the conditions`
+each(let account, accounts) {
+  <: `{account.id} : @{account.username}@{account.host}`
+}
+
+let warning = [
+  `{accounts.len} accounts were found.`,
+  `In your specified range, accounts between @{accounts[0].username}@{accounts[0].host}`
+  `and  @{accounts[accounts.len-1].username}@{accounts[accounts.len-1].host} will be deleted.`
+  `Are you sure to proceed?`
+].join(Str:lf)
+let warning_additional = [
+  `**Be sure to compare the scope of the accounts being deleted against the control panel to ensure that it matches your expectations.**`
+  'Pressing OK immediately triggers a delete command, which is **irrevocable**.'
+  '---'
+  ''
+].join(Str:lf)
+
+if (Mk:confirm('Fetch finished', warning) == true) {
+  if (Mk:confirm('This is last warning', `{warning_additional}{warning}`, 'warning') == true) {
+    <: 'Perform the deletion request. Cannot be canceled.'
+    each(let account, accounts) {
+      Mk:api('admin/accounts/delete', {
+          userId: account.id
+      })
+      <: `{account.id} : @{account.username}@{account.host}`
+    }
+  
+    <: `Done account deletion request for {accounts.len} accounts`
+  }
+}

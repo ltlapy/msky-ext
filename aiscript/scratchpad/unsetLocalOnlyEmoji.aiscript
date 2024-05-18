@@ -1,0 +1,51 @@
+/// @ 0.16.0
+### {
+	name: "unsetLocalOnlyEmoji"
+	version: 3
+	description: "Unset localonly to all emojis"
+}
+// Make sure API call is unlimited before running this script!
+
+var Emojis = []
+var LastFetchedId = 'zzzzzzzzzzzzzzzzzzzzz'
+
+<: 'Fetching list of emoji...'
+loop {
+  let res = Mk:api("admin/emoji/list", {
+    allowPartial: true
+    limit: 30
+    untilId: LastFetchedId
+  })
+  
+  if (res.len == 0) break
+  
+  Emojis = Emojis.concat(res)
+  LastFetchedId = res[res.len - 1].id
+  
+  if (Emojis.len % 300 == 0) {
+    <: `{Emojis.len} emojis are fetched`
+  }
+}
+
+<: `Done fetching {Emojis.len} emojis`
+// Mk:save('adminEmojis', Emojis)
+// Emojis = Mk:load('adminEmojis')
+
+<: 'Looking for local only emojis...'
+let LocalEmojis = []
+
+each(let emoji, Emojis) {
+  if (emoji.localOnly == true) {
+    LocalEmojis.push(emoji)
+  }
+}
+
+<: `{LocalEmojis.len} emojis are local only.`
+
+each(let emoji, LocalEmojis) {
+  <: `{emoji.id}: {emoji.name}`
+  emoji.localOnly = false
+  Mk:api('admin/emoji/update', emoji)
+}
+
+<: 'Done'

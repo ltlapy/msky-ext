@@ -1,0 +1,67 @@
+/// @ 0.16.0
+### {
+	name: "userBatchAddToList"
+	version: 3
+	description: "Add users to a list with user handle list"
+}
+
+//   ----------------------------------
+// Edit below items and Run within Scratch Pad
+// Make sure API call is unlimited before running this script!
+//   ----------------------------------
+let listId = "xxxxxxxxx"
+let userHandles = [
+  // @username
+  // @username@host
+]
+
+//   --- End of user configuration ---
+
+// region misc
+let log = @(v) { <: v }
+let getUser = @(handle) {
+  // log(`{handle}: Gathering user information...`)
+  var username = ""
+  var host = null
+
+  let handleSplit = handle.split("@")
+  username = handleSplit[1]
+  if (handleSplit.len == 3) { host = handleSplit[2] }
+  
+  let user = Mk:api('users/show' {
+    host: host
+    username: username
+  })
+  
+  if (Core:type(user) == "error") {
+    log(`{handle}: Cannot find user.`)
+    log(user.info)
+    return null
+  }
+  // log(`{handle}: found user information.`)
+  return user
+}
+
+// endregion
+
+var okCnt = 0;
+each (let userHandle, userHandles) {
+  log(`{handle}: Adding to the list...`)
+
+  let user = getUser(userHandle)
+  if (user == null) {
+    continue
+  }
+
+  let res = Mk:api('users/lists/push' {
+    listId: listId
+    userId: user.id
+  })
+  if (Core:type(res) == "error") {
+    log(`{userHandle}: Cannot add to list.`)
+    log(res.info)
+  } else {
+    okCnt += 1
+  }
+}
+<: `{okCnt} of {userHandles.len} accounts added to the list.`

@@ -1,0 +1,599 @@
+/// @ 0.12.2
+// CC0 https://creativecommons.org/publicdomain/zero/1.0/
+// 2023-05-09: 소스 미리보기 추가
+// 2023-05-08: Description란의 mfm이 뒤죽박죽인 문제 해결, 컴포넌트별 데모 UI 추가
+
+var selected = 'MainPage'
+
+let Catalog = {
+    // index for convenience
+    // these will be overrided by later definition
+    container:      { method: Ui:C:container }
+    text:           { method: Ui:C:text }
+    mfm:            { method: Ui:C:mfm }
+    textarea:       { method: Ui:C:textarea }
+    textInput:      { method: Ui:C:textInput }
+    numberInput:    { method: Ui:C:numberInput }
+    button:         { method: Ui:C:button }
+    buttons:        { method: Ui:C:buttons }
+    switch:         { method: Ui:C:switch }
+    select:         { method: Ui:C:select }
+    folder:         { method: Ui:C:folder }
+    postFormButton: { method: Ui:C:postFormButton }
+    postForm:       { method: Ui:C:postForm }  // 2023-09-09
+}
+let RenderedSampleCodes = {}
+
+//region UiTemplates
+
+@buildDescription(description) {
+    if (description == null) {
+        description = 'No descriptions specified.'
+    } elif (Core:type(description) == "obj") {
+        // already built
+        return description
+    }
+
+    if (Core:type(description) == "arr") {
+        description = description.join(Str:lf)
+    }
+    // do nothing on "str"
+
+    return Ui:C:mfm({text: description})
+}
+
+@updateComponentDemo(component) {
+    var canvas = []
+    
+    var title = component.title
+    var description = component.description
+
+    // title & description
+    Ui:get('title').update({ text: title })
+    
+    description = buildDescription(description)
+    Ui:get('descriptionArea').update({ children: [description] })
+
+    // arguments
+    if (component.arguments == null) {
+        Ui:get('arguments').update({ hidden: true })
+    } else {
+        // TODO: 더 좋은 방법
+        var arglist = []
+        
+        each (let arg, component.arguments) {
+            arglist.push(` - **{arg.name}** : {arg.type}`)
+        }
+
+        Ui:get('arguments').update({ hidden: false })
+        Ui:get('argumentsBody').update({ text: arglist.join(Str:lf) })
+    }
+
+    // demo
+    if (component.demoUi != null) {
+        Ui:get('demoArea').update({
+            children: component.demoUi
+            hidden: false
+        })
+        Ui:get('demoSourceBody').update({
+            text: [
+                '```aiscript'
+                component.source
+                '```'
+            ].join(Str:lf)
+        })
+        Ui:get('demoSourceArea').update({ hidden: false })
+    } else {
+        Ui:get('demoArea').update({ hidden: true })
+        Ui:get('demoSourceArea').update({ hidden: true })
+    }
+}
+
+let BodyUi = [
+    Ui:C:text({
+        text: "Loading..."
+        size: 1.2
+        bold: true
+    } 'title')
+    Ui:C:container({
+        borderWidth: 4
+        padding: 18
+        rounded: true
+        bgColor: "var(--bg, #884)"
+    } 'demoArea')
+    Ui:C:container({
+        children: [Ui:C:folder({
+            title: "🧰 소스 보기"
+            children: [Ui:C:mfm({} 'demoSourceBody')]
+            opened: false
+        })]
+        borderWidth: 4
+    } 'demoSourceArea')
+    Ui:C:container({
+        children: []
+        padding: 4
+        borderWidth: 12
+        borderColor: "red"
+    } 'descriptionArea')
+    Ui:C:container({
+        children: [Ui:C:folder({
+            title: "arguments"
+            children: [Ui:C:mfm({} 'argumentsBody')]
+        })]
+    } 'arguments')
+]
+
+let Heartbeat = @() {
+  // https://k.lapy.link/play/9fhu4jtdhw
+  let this = {
+    msg1: `<small>🔵 의 깜빡임이 멈추면 페이지를 새로고침해 주세요</small>`
+    msg2: `<small>⚫ 의 깜빡임이 멈추면 페이지를 새로고침해 주세요</small>`
+  }
+
+  this.beatC = Ui:C:mfm({})
+
+  let _update = @(text){ this.beatC.update({text: text}) }
+  this.beat = @(){
+    _update(this.msg1)
+    Async:timeout(200 @(){ _update(this.msg2) })
+  }
+  
+  Async:interval(1000 this.beat true)
+
+  return Ui:C:container({
+    children: [this.beatC]
+    align: 'center'
+    bgColor: 'var(--bg, #888)'
+    padding: 6
+    rounded: true
+  })
+}
+
+@uiInit() {
+    var list = [{
+        text: ' -- Main Page -- '
+        value: 'MainPage'
+    }]
+    each (let component, Obj:kvs(Catalog)) {
+        component[1].description = buildDescription(component[1].description)
+
+        list.push({
+            text: component[1].title  // Ui:C:(...)
+            value: component[0]  // Catalog[key]
+        })
+    }
+
+    Ui:render([
+        Heartbeat()
+        Ui:C:select({
+            label: 'AiScript Ui Components'
+            items: list
+            default: 'MainPage'
+            onChange: @(v) {
+                selected = v
+                var component = {}
+
+                if (v == 'MainPage') {
+                    component = MainPage
+                } else { component = Obj:get(Catalog, v) }
+                updateComponentDemo(component)
+            }
+        } 'componentList')
+        Ui:C:container({
+            children: BodyUi
+        } 'Body')
+    ])
+}
+
+//endregion UiTemplates
+
+//region catalog_details
+
+let MainPage = {
+    title: ' -- Main Page -- '
+    description: [
+        '**AiScript Ui 컴포넌트 일람 및 사용 예제**'
+        ''
+        "** - 참고자료**"
+        `>ℹ 이 서버는 **AiScript {Core:v}** 를 사용 중입니다.`
+        "🔗 [**AiScript Playground**](https://aiscript-dev.github.io/aiscript/)"
+        "<small>(⚠️ 참고: 최신 Misskey의 AiScript 버전과 다를 수 있으며, Ui 컴포넌트 등과 같은 Misskey의 함수/상수는 사용할 수 없습니다.)</small>"
+        "🔗 ?[**Misskey Hub** AiScript 페이지](https://misskey-hub.net/ko/docs/for-developers/aiscript/)"
+        "🔗 ?[**AiScript** 가이드 (일본어)](https://github.com/syuilo/aiscript/blob/master/docs/get-started.md) ?[(영어)](https://github.com/syuilo/aiscript/blob/master/translations/en/docs/get-started.md)"
+        "🔗 ?[**AiScript** 표준 라이브러리](https://github.com/syuilo/aiscript/blob/master/docs/std.md)"
+        "<small>(⚠️ 참고:  `Str`, `Arr`는 Primitive methods로 변경되었어요. ?[Commit](https://github.com/syuilo/aiscript/commit/b9018ded5d5ffc47f89fc8d2b228303e1500ae72) / ?[Issue](https://github.com/syuilo/aiscript/issues/208) / ?[PR](https://github.com/syuilo/aiscript/pull/209))</small>"
+        "🔗 ?[**AiScript** Misskey 확장 (Mk:...)](https://github.com/misskey-dev/misskey/blob/develop/packages/frontend/src/scripts/aiscript/api.ts)"
+        "🔗 ?[**AiScript** 소스코드](https://github.com/syuilo/aiscript)"
+        "🔗 ?[**AiScript** 표준 라이브러리 소스코드](https://github.com/syuilo/aiscript/blob/master/src/interpreter/lib/std.ts)"
+        "🔗 ?[**AiScript** - Primitive Props (num, str, arr)](https://github.com/syuilo/aiscript/blob/master/src/interpreter/primitive-props.ts)"
+        "🔗 ?[**AiScript UI** 소스 코드 (develop 브랜치)](https://github.com/misskey-dev/misskey/blob/develop/packages/frontend/src/scripts/aiscript/ui.ts)"
+        "🔗 ?[**AiScript UI** Vue Component 소스 코드 (develop 브랜치)](https://github.com/misskey-dev/misskey/blob/develop/packages/frontend/src/components/MkAsUi.vue)"
+        "🔗 ?[**AiScript** Misskey 플러그인 소스 코드](https://github.com/misskey-dev/misskey/blob/develop/packages/frontend/src/plugin.ts)"
+    ]
+    //showUiOnly: true
+}
+
+Catalog.container = {
+    title: 'Ui:C:container'
+    description: [
+        '여러 개의 AiScript Ui 구성 요소를 담을 수 있는 컨테이너입니다.'
+        '좌우 정렬, 바탕색, 글자색, 글꼴 모양, 테두리, 여백, 둥근 모서리 여부, 보이기/숨기기와 같은 세부적인 조절을 할 수 있습니다.'
+    ].join(Str:lf)
+    arguments: [
+        { name: "children", type: "AsUiComponent['id'][]", optional: "true" }
+        { name: "align", type: "'left' | 'center' | 'right'", optional: "true" }
+        { name: "bgColor", type: "string", optional: "true" }
+        { name: "fgColor", type: "string", optional: "true" }
+        { name: "font", type: "'serif' | 'sans-serif' | 'monospace'", optional: "true" }
+        { name: "borderWidth", type: "number", optional: "true" }
+        { name: "borderColor", type: "string", optional: "true" }
+        { name: "padding", type: "number", optional: "true" }
+        { name: "rounded", type: "boolean", optional: "true" }
+        { name: "hidden", type: "boolean", optional: "true" }
+    ]
+    demoUi: [
+        Ui:C:mfm({ text: [
+            "이 데모 창은 다음과 같이 정의된 container를 이용합니다."
+            "```aiscript"
+            "Ui:C:container({"
+            "    borderWidth: 4"
+            "    padding: 18"
+            "    rounded: true"
+            "    bgColor: 'var(--bg, #884)'"
+            "} 'demoArea')'"
+            "```"
+          ].join(Str:lf) })
+    ]
+    source: [
+        "Ui:C:container({"
+        "    children: ["
+        "        Ui:C:mfm({ text: ["
+        "            \"이 데모 창은 다음과 같이 정의된 container를 이용합니다.\""
+        "            \"```aiscript\""
+        "            \"Ui:C:container({\""
+        "            \"    borderWidth: 4\""
+        "            \"    padding: 18\""
+        "            \"    rounded: true\""
+        "            \"    bgColor: 'var(--bg, #884)\'\""
+        "            \"} 'demoArea')'\""
+        "            \"```\""
+        "        ].join(Str:lf) })"
+        "    ]"
+        "    borderWidth: 4"
+        "    padding: 18"
+        "    rounded: true"
+        "    bgColor: 'var(--bg, #884)'"
+        "} 'demoArea')"
+    ].join(Str:lf)
+} // End of Catalog.container
+    
+Catalog.text = {
+    title: 'Ui:C:text'
+    description: [
+        '텍스트를 평문으로 표시합니다.'
+        '개행 및 MFM은 무시됩니다. 필요할 경우 `Ui:C:mfm` 을 사용하십시오.'
+    ].join(Str:lf)
+    arguments: [
+        { name: "text", type: "string", optional: "true" }
+        { name: "size", type: "number", optional: "true" }
+        { name: "bold", type: "boolean", optional: "true" }
+        { name: "color", type: "string", optional: "true" }
+        { name: "font", type: "'serif' | 'sans-serif' | 'monospace'", optional: "true" }
+    ]
+    demoUi: [
+        Ui:C:text({ text: "I $[jelly ❤] #Misskey" })
+    ]
+    source: "Ui:C:text({ text: 'I $[jelly ❤] #Misskey' })"
+} // End of Catalog.text
+
+Catalog.mfm = {
+    title: 'Ui:C:mfm'
+    description: [
+        '서식 있는 텍스트를 표시합니다.'
+        '`Ui:C:text`와 달리 개행 및 MFM까지 모두 표시됩니다. 필요 시 `Ui:C:text`를 사용하십시오.'
+    ].join(Str:lf)
+    arguments: [
+        { name: "text", type: "string", optional: "true" }
+        { name: "size", type: "number", optional: "true" }
+        { name: "bold", type: "boolean", optional: "true" }
+        { name: "color", type: "string", optional: "true" }
+        { name: "font", type: "'serif' | 'sans-serif' | 'monospace'", optional: "true" }
+    ]
+    demoUi: [
+        Ui:C:mfm({ text: "I $[jelly ❤] #Misskey" })
+    ]
+    source: "Ui:C:mfm({ text: 'I $[jelly ❤] #Misskey' })"
+} // End of Catalog.mfm
+
+Catalog.button = {
+    title: 'Ui:C:button'
+    description: [
+        '사용자가 상호작용할 수 있는 버튼입니다.'
+        '강조, 둥글게, 비활성 여부를 설정할 수 있으며, 클릭하면 사전에 지정한 콜백 함수를 호출합니다.'
+        '한 줄에 여러 개의 버튼을 표시하려면 `Ui:C:buttons` 를 참고하십시오.'
+    ].join(Str:lf)
+    arguments: [
+        { name: "text", type: "string", optional: "true" }
+        { name: "onClick", type: "@() {}", optional: "true" }
+        { name: "primary", type: "boolean", optional: "true" }
+        { name: "rounded", type: "boolean", optional: "true" }
+        { name: "disabled", type: "boolean", optional: "true" }
+    ]
+    demoUi: [
+        Ui:C:button({ text: "Primary", primary: true, onClick: @() {Mk:dialog("Alert", "Hello, world!")} })
+        Ui:C:button({ text: "Button", onClick: @() {Mk:dialog("Alert", "Hello, world!")}})
+        Ui:C:button({ text: "disabled", disabled: true })
+    ]
+    source: [
+        "Ui:C:button({ text: 'Primary', primary: true, onClick: @() {Mk:dialog('Alert', 'Hello, world!')} })"
+        "Ui:C:button({ text: 'Button', onClick: @() {Mk:dialog('Alert', 'Hello, world!')}})"
+        "Ui:C:button({ text: 'disabled', disabled: true })"
+    ].join(Str:lf)
+} // End of Catalog.button
+
+Catalog.buttons = {
+    title: 'Ui:C:buttons'
+    description: [
+        '버튼을 한 줄에 여러 개 표시합니다. `buttons`의 하위 항목들은 `Ui:C:button`으로 감싸지 않습니다.'
+        '의도된 동작인 지 알 수 없으나, `onClick`이 지정되지 않을 경우 에러가 발생합니다.'
+        '자세한 내용은 `Ui:C:button` 을 참고하십시오.'
+    ].join(Str:lf)
+    arguments: [
+        { name: "buttons", type: "AsUiButton[]", optional: "true" }
+    ]
+    demoUi: [
+        Ui:C:buttons({
+            buttons: [
+                { text: "Primary", primary: true, onClick: @() {Mk:dialog("Alert", "Hello, world!")} }
+                { text: "Button", onClick: @() {Mk:dialog("Alert", "Hello, world!")}}
+                { text: "disabled", disabled: true, onClick: @(){} }
+                // { text: "disabled", disabled: true }  // - ERROR
+            ]
+        })
+    ]
+    source: [
+        "Ui:C:buttons({"
+        "    buttons: ["
+        "        { text: 'Primary', primary: true, onClick: @() {Mk:dialog('Alert', 'Hello, world!')} }"
+        "        { text: 'Button', onClick: @() {Mk:dialog('Alert', 'Hello, world!')}}"
+        "        { text: 'disabled', disabled: true, onClick: @(){} }"
+        "        // { text: 'disabled', disabled: true }  // - ERROR"
+        "    ]"
+        "})"
+    ].join(Str:lf)
+} // End of Catalog.buttons
+
+Catalog.switch = {
+    title: 'Ui:C:switch'
+    description: [
+        '꺼짐-켜짐 상태를 전환할 수 있는 스위치입니다.'
+        '기본값, 라벨, 설명문을 설정할 수 있으며, 클릭하면 사전에 지정한 콜백 함수를 호출합니다.'
+        '버튼과 달리 비활성화할 수 없습니다.'
+    ].join(Str:lf)
+    arguments: [
+        { name: "onChange", type: "@(v: boolean) {}", optional: "true" }
+        { name: "default", type: "boolean", optional: "true" }
+        { name: "label", type: "string", optional: "true" }
+        { name: "caption", type: "string", optional: "true" }
+    ]
+    demoUi: [
+        Ui:C:switch({label: "Switch", caption: "This is demo caption"})
+        Ui:C:switch({label: "Default true", default: true})
+    ]
+    source: [
+        "Ui:C:switch({label: 'Switch', caption: 'This is demo caption'})"
+        "Ui:C:switch({label: 'Default true', default: true})"
+    ].join(Str:lf)
+
+} // End of Catalog.switch
+
+Catalog.textInput = {
+    title: 'Ui:C:textInput'
+    description: [
+        '한 줄 크기의 텍스트 입력 칸입니다.'
+        '기본값, 라벨, 설명문을 설정할 수 있으며, 값이 수정될 때 마다 사전에 지정한 콜백 함수를 호출합니다.'
+    ].join(Str:lf)
+    arguments: [
+        { name: "onInput", type: "@(v: string) {}", optional: "true" }
+        { name: "default", type: "string", optional: "true" }
+        { name: "label", type: "string", optional: "true" }
+        { name: "caption", type: "string", optional: "true" }
+    ]
+    demoUi: [
+        Ui:C:textInput({
+            label: "textInput"
+            caption: "This is demo textInput"
+            default: "Hello, world!"
+        })
+    ]
+    source: [
+        "Ui:C:textInput({"
+        "    label: 'textInput'"
+        "    caption: 'This is demo textInput'"
+        "    default: 'Hello, world!'"
+        "})"
+    ].join(Str:lf)
+} // End of Catalog.textInput
+
+Catalog.textarea = {
+    title: 'Ui:C:textarea'
+    description: [
+        '여러 줄을 입력할 수 있는 텍스트 입력 칸입니다.'
+        '기본값, 라벨, 설명문을 설정할 수 있으며, 값이 수정될 때 마다 사전에 지정한 콜백 함수를 호출합니다.'
+    ].join(Str:lf)
+    arguments: [
+        { name: "onInput", type: "@(v: string) {}", optional: "true" }
+        { name: "default", type: "string", optional: "true" }
+        { name: "label", type: "string", optional: "true" }
+        { name: "caption", type: "string", optional: "true" }
+    ]
+    demoUi: [
+        Ui:C:textarea({
+            label: "Textarea"
+            caption: "This is demo textarea"
+            default: "Hello, world!"
+        })
+    ]
+    source: [
+        "Ui:C:textarea({"
+        "    label: 'Textarea'"
+        "    caption: 'This is demo textarea'"
+        "    default: 'Hello, world!'"
+        "})"
+    ].join(Str:lf)
+} // End of Catalog.textarea
+
+Catalog.numberInput = {
+    title: 'Ui:C:numberInput'
+    description: [
+        '숫자를 입력할 수 있는 칸입니다.'
+        '기본값, 라벨, 설명문을 설정할 수 있으며, 값이 수정될 때 마다 사전에 지정한 콜백 함수를 호출합니다.'
+    ].join(Str:lf)
+    arguments: [
+        { name: "onInput", type: "@(v: number) {}", optional: "true" }
+        { name: "default", type: "number", optional: "true" }
+        { name: "label", type: "string", optional: "true" }
+        { name: "caption", type: "string", optional: "true" }
+    ]
+    demoUi: [
+        Ui:C:numberInput({
+            label: "numberInput"
+            caption: "This is demo numberInput"
+            default: 777
+        })
+    ]
+    source: [
+        "Ui:C:numberInput({"
+        "    label: 'numberInput'"
+        "    caption: 'This is demo numberInput'"
+        "    default: 777"
+        "})"
+    ].join(Str:lf)
+} // End of Catalog.numberInput
+
+Catalog.select = {
+    title: 'Ui:C:select'
+    description: [
+        '주어진 리스트 가운데 하나를 선택할 수 있는 드롭다운 메뉴입니다.'
+        '기본값, 라벨, 설명문을 설정할 수 있으며, 선택 항목이 변경될 때 마다 사전에 지정한 콜백 함수를 호출합니다.'
+        '리스트는 `{ text: string, value: string }` 형태의 `obj` array로 정의해야 하며, value는 생략할 수 있습니다.'
+    ].join(Str:lf)
+    arguments: [
+        { name: "items", type: "{text: string, value?: string}[]", optional: "true" }
+        { name: "onChange", type: "@(v: string) {}", optional: "true" }
+        { name: "default", type: "string", optional: "true" }
+        { name: "label", type: "string", optional: "true" }
+        { name: "caption", type: "string", optional: "true" }
+    ]
+    demoUi: [
+        Ui:C:select({
+            label: "select"
+            caption: "This is demo select"
+            items: [
+                {text: "Kiwi"}
+                {text: "Papaya"}
+                {text: "Mango"}
+            ]
+            default: "Papaya"
+        })
+    ]
+    source: [
+        "Ui:C:select({"
+        "    label: 'select'"
+        "    caption: 'This is demo select'"
+        "    items: ["
+        "        {text: 'Kiwi'}"
+        "        {text: 'Papaya'}"
+        "        {text: 'Mango'}"
+        "    ]"
+        "    default: 'Papaya'"
+        "})"
+    ].join(Str:lf)
+} // End of Catalog.select
+
+Catalog.folder = {
+    title: 'Ui:C:folder'
+    description: [
+        '클릭하여 내용을 보이거나 숨길 수 있습니다.'
+        'AiScript Ui 구성요소를 담을 수 있으나, `Ui:C:Container`와 같은 효과는 단독으로 사용할 수 없습니다.'
+        '제목과 열림 여부를 설정할 수 있습니다.'
+    ].join(Str:lf)
+    arguments: [
+        { name: "children", type: "AsUiComponent['id'][]", optional: "true" }
+        { name: "title", type: "string", optional: "true" }
+        { name: "opened", type: "boolean", optional: "true" }
+    ]
+    demoUi: [
+        Ui:C:folder({
+            title: "This is sample folder"
+            children: [
+                Ui:C:mfm({ text: "I $[jelly ❤] #Misskey" })
+            ]
+        })
+    ]
+    source: [
+        "Ui:C:folder({"
+        "    title: 'This is sample folder'"
+        "    children: ["
+        "        Ui:C:mfm({ text: 'I $[jelly ❤] #Misskey' })"
+        "    ]"
+        "})"
+    ].join(Str:lf)
+} // End of Catalog.folder
+
+Catalog.postFormButton = {
+    title: 'Ui:C:postFormButton'
+    description: [
+        '노트 작성 폼을 표시하는 버튼입니다.'
+        '버튼의 글자, 게시할 텍스트, 둥글기 여부, 강조 여부를 설정할 수 있습니다.'
+        '일반 버튼과 다르게 `Ui:C:Buttons`와 함께 사용할 수 없으며, 비활성화할 수 없습니다.'
+    ].join(Str:lf)
+    arguments: [
+        { name: "text", type: "string", optional: "true" }
+        { name: "primary", type: "boolean", optional: "true" }
+        { name: "rounded", type: "boolean", optional: "true" }
+        { name: "form", type: "{text: string}", optional: "true" }
+    ]
+    demoUi: [
+        Ui:C:postFormButton({
+            text: "Open postForm"
+            primary: true
+            form: {text: "I $[jelly ❤] #Misskey"}
+        })
+    ]
+    source: [
+        "Ui:C:postFormButton({"
+        "    text: 'Open postForm'"
+        "    primary: true"
+        "    form: {text: 'I $[jelly ❤] #Misskey'}"
+        "})"
+    ].join(Str:lf)
+} // End of Catalog.postFormButton
+
+Catalog.postForm = {
+    title: 'Ui:C:postForm'
+    description: [
+        '노트 작성 폼을 표시합니다. **(Misskey 2023.9.0-beta.6 이상)**'
+        '`Ui:C:postForm`과 다르게, 게시할 텍스트에 대해서만 설정할 수 있습니다.'
+    ].join(Str:lf)
+    arguments: [
+        { name: "form", type: "{text: string}", optional: "true" }
+    ]
+    demoUi: [
+        Ui:C:postForm({
+            form: {text: "I $[jelly ❤] #Misskey"}
+        })
+    ]
+    source: [
+        "Ui:C:postForm({"
+        "    form: {text: 'I $[jelly ❤] #Misskey'}"
+        "})"
+    ].join(Str:lf)
+} // End of Catalog.postForm
+
+//endregion catalog_details
+
+
+selected = 'MainPage'
+uiInit()
+updateComponentDemo(MainPage)
